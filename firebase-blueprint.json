@@ -1,0 +1,218 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Registered profile for system operators controlling corporate access and branches.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique Firebase Auth identifier." },
+        "email": { "type": "string", "description": "Operator email address." },
+        "role": { "type": "string", "enum": ["MASTER", "GERENTE", "OPERADOR"] },
+        "branchId": { "type": "string", "enum": ["MATRIZ", "CD_116", "CD_88", "CD_105", "CD_333"] },
+        "branchName": { "type": "string" },
+        "cargo": { "type": "string" },
+        "status": { "type": "string", "enum": ["Ativo", "Inativo"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "branchId", "branchName", "cargo", "status", "createdAt", "updatedAt"]
+    },
+    "Rotation": {
+      "title": "Tire Rotation Record",
+      "description": "Tracks tire rotation and replacement events per vehicle and branch.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "veiculo": { "type": "string" },
+        "pneuRetirado": { "type": "string" },
+        "pneuInstalado": { "type": "string" },
+        "fluxo": { "type": "string" },
+        "data": { "type": "string", "format": "date" },
+        "status": { "type": "string" },
+        "fogoPneu": { "type": "string", "description": "Rastreio único do fogo do pneu." },
+        "branchId": { "type": "string" },
+        "branchName": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "userRole": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "veiculo", "pneuRetirado", "pneuInstalado", "fluxo", "data", "status", "fogoPneu", "branchId", "branchName", "createdBy", "userRole", "createdAt", "updatedAt"]
+    },
+    "Alignment": {
+      "title": "Alignment Record",
+      "description": "Tracks geometry alignment and checklist details per vehicle and branch.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "placa": { "type": "string" },
+        "tecnico": { "type": "string" },
+        "status": { "type": "string" },
+        "autorizadoPor": { "type": "string" },
+        "defeito": { "type": "string" },
+        "data": { "type": "string", "format": "date" },
+        "fogoPneu": { "type": "string", "description": "Rastreio único do fogo do pneu." },
+        "branchId": { "type": "string" },
+        "branchName": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "userRole": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "placa", "tecnico", "status", "autorizadoPor", "defeito", "data", "fogoPneu", "branchId", "branchName", "createdBy", "userRole", "createdAt", "updatedAt"]
+    },
+    "Calibration": {
+      "title": "Tire Calibration Record",
+      "description": "Defines tire pressure status, findings, and targets per branch.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "placa": { "type": "string" },
+        "tecnico": { "type": "string" },
+        "pneusCalibrados": { "type": "string" },
+        "pressaoAlvo": { "type": "number" },
+        "pressaoInicial": { "type": "number" },
+        "data": { "type": "string", "format": "date" },
+        "tipoVeiculo": { "type": "string" },
+        "fogoPneu": { "type": "string", "description": "Rastreio único do fogo do pneu." },
+        "branchId": { "type": "string" },
+        "branchName": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "userRole": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "placa", "tecnico", "pneusCalibrados", "pressaoAlvo", "pressaoInicial", "data", "fogoPneu", "branchId", "branchName", "createdBy", "userRole", "createdAt", "updatedAt"]
+    },
+    "Balancing": {
+      "title": "Balancing Record",
+      "description": "Calculates and registers wheel balancing procedures per branch.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "placa": { "type": "string" },
+        "tecnico": { "type": "string" },
+        "pneusBalanceados": { "type": "string" },
+        "data": { "type": "string", "format": "date" },
+        "fogoPneu": { "type": "string", "description": "Rastreio único do fogo do pneu." },
+        "branchId": { "type": "string" },
+        "branchName": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "userRole": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "placa", "tecnico", "pneusBalanceados", "data", "fogoPneu", "branchId", "branchName", "createdBy", "userRole", "createdAt", "updatedAt"]
+    },
+    "InventoryItem": {
+      "title": "Inventory Balance Item",
+      "description": "Stock inventory counts, alerts, and target levels per branch.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "nome": { "type": "string" },
+        "quantidade": { "type": "number" },
+        "unidade": { "type": "string" },
+        "meta": { "type": "number" },
+        "alerta": { "type": "boolean" },
+        "fogoPneu": { "type": "string" },
+        "branchId": { "type": "string" },
+        "branchName": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "userRole": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "nome", "quantidade", "unidade", "meta", "alerta", "branchId", "branchName", "createdBy", "userRole", "createdAt", "updatedAt"]
+    },
+    "TreadMeasurement": {
+      "title": "Tire Tread Depth Measurement",
+      "description": "Tracks millimeters of depth for tires and alerts.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fogoPneu": { "type": "string" },
+        "placa": { "type": "string" },
+        "sulco1": { "type": "number" },
+        "sulco2": { "type": "number" },
+        "sulco3": { "type": "number" },
+        "sulco4": { "type": "number" },
+        "tecnico": { "type": "string" },
+        "data": { "type": "string", "format": "date" },
+        "observacoes": { "type": "string" },
+        "status": { "type": "string" },
+        "branchId": { "type": "string" },
+        "branchName": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "userRole": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "fogoPneu", "placa", "sulco1", "sulco2", "sulco3", "sulco4", "tecnico", "data", "branchId", "branchName", "createdBy", "userRole", "createdAt", "updatedAt"]
+    },
+    "TireMovement": {
+      "title": "Tire Movement Logistics Record",
+      "description": "Tracks visual or geometric positioning updates representation.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fogoPneu": { "type": "string" },
+        "tecnico": { "type": "string" },
+        "placa": { "type": "string" },
+        "posicaoAtual": { "type": "string" },
+        "posicaoAnterior": { "type": "string" },
+        "pneuAtual": { "type": "string" },
+        "pneuAnterior": { "type": "string" },
+        "data": { "type": "string", "format": "date" },
+        "observacoes": { "type": "string" },
+        "status": { "type": "string" },
+        "branchId": { "type": "string" },
+        "branchName": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "userRole": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "fogoPneu", "tecnico", "placa", "posicaoAtual", "posicaoAnterior", "pneuAtual", "pneuAnterior", "data", "branchId", "branchName", "createdBy", "userRole", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Operators directory with role and branch permissions."
+    },
+    "/rotations/{rotationId}": {
+      "schema": "Rotation",
+      "description": "Tire rotation records per branch."
+    },
+    "/alignments/{alignmentId}": {
+      "schema": "Alignment",
+      "description": "Alignment services per branch."
+    },
+    "/calibrations/{calibrationId}": {
+      "schema": "Calibration",
+      "description": "Calibration records per branch."
+    },
+    "/balancings/{balancingId}": {
+      "schema": "Balancing",
+      "description": "Balancing records per branch."
+    },
+    "/inventoryItems/{inventoryItemId}": {
+      "schema": "InventoryItem",
+      "description": "Borracharia inventory products database catalog per branch."
+    },
+    "/treadMeasurements/{treadMeasurementId}": {
+      "schema": "TreadMeasurement",
+      "description": "Tire depth tread measurements."
+    },
+    "/tireMovements/{tireMovementId}": {
+      "schema": "TireMovement",
+      "description": "Movement of tires on vehicle slots."
+    }
+  }
+}

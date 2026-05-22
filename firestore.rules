@@ -1,0 +1,232 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net - Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isMaster() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserProfile().role == "MASTER";
+    }
+
+    function isOfBranch(branchId) {
+      return isSignedIn() && (isMaster() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserProfile().branchId == branchId));
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY SCHEMA VALIDATION BLUEPRINTS ---
+
+    function isValidUser(data) {
+      return data.uid is string && data.uid == request.auth.uid
+          && data.email is string && data.email.size() <= 256
+          && data.role is string
+          && data.branchId is string
+          && data.status is string;
+    }
+
+    function isValidRotation(data) {
+      return data.id is string
+          && data.userId is string
+          && data.veiculo is string
+          && data.pneuRetirado is string
+          && data.pneuInstalado is string
+          && data.fluxo is string
+          && data.data is string
+          && data.status is string
+          && data.fogoPneu is string
+          && data.branchId is string;
+    }
+
+    function isValidAlignment(data) {
+      return data.id is string
+          && data.userId is string
+          && data.placa is string
+          && data.tecnico is string
+          && data.status is string
+          && data.autorizadoPor is string
+          && data.defeito is string
+          && data.data is string
+          && data.fogoPneu is string
+          && data.branchId is string;
+    }
+
+    function isValidCalibration(data) {
+      return data.id is string
+          && data.userId is string
+          && data.placa is string
+          && data.tecnico is string
+          && data.pneusCalibrados is string
+          && data.pressaoAlvo is number
+          && data.pressaoInicial is number
+          && data.data is string
+          && data.fogoPneu is string
+          && data.branchId is string;
+    }
+
+    function isValidBalancing(data) {
+      return data.id is string
+          && data.userId is string
+          && data.placa is string
+          && data.tecnico is string
+          && data.pneusBalanceados is string
+          && data.data is string
+          && data.fogoPneu is string
+          && data.branchId is string;
+    }
+
+    function isValidInventoryItem(data) {
+      return data.id is string
+          && data.userId is string
+          && data.nome is string
+          && data.quantidade is number
+          && data.unidade is string
+          && data.meta is number
+          && data.alerta is bool
+          && data.branchId is string;
+    }
+
+    function isValidTreadMeasurement(data) {
+      return data.id is string
+          && data.fogoPneu is string
+          && data.placa is string
+          && data.sulco1 is number
+          && data.sulco2 is number
+          && data.sulco3 is number
+          && data.sulco4 is number
+          && data.tecnico is string
+          && data.data is string
+          && data.branchId is string;
+    }
+
+    function isValidTireMovement(data) {
+      return data.id is string
+          && data.fogoPneu is string
+          && data.placa is string
+          && data.tecnico is string
+          && data.posicaoAtual is string
+          && data.posicaoAnterior is string
+          && data.pneuAtual is string
+          && data.pneuAnterior is string
+          && data.data is string
+          && data.branchId is string;
+    }
+
+    // --- COLLECTION INVARIANTS ---
+
+    // USERS COLLECTION
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn(); // Allow lists for operators directory or support lookups
+      allow create: if isSignedIn() && isValidId(userId); // Allow onboarding profile setup
+      allow update: if isSignedIn() && isValidId(userId) && (isMaster() || request.auth.uid == userId);
+      allow delete: if isSignedIn() && isValidId(userId) && isMaster();
+    }
+
+    // ROTATIONS COLLECTION
+    match /rotations/{rotationId} {
+      allow get: if isSignedIn() && isOfBranch(existing().branchId);
+      allow list: if isSignedIn() && (isMaster() || isOfBranch(resource.data.branchId));
+      allow create: if isSignedIn() && isValidId(rotationId) && isValidRotation(incoming())
+                     && isOfBranch(incoming().branchId);
+      allow update: if isSignedIn() && isValidId(rotationId) && isValidRotation(incoming())
+                     && isOfBranch(existing().branchId)
+                     && isOfBranch(incoming().branchId);
+      allow delete: if isSignedIn() && isValidId(rotationId) && isOfBranch(existing().branchId);
+    }
+
+    // ALIGNMENTS COLLECTION
+    match /alignments/{alignmentId} {
+      allow get: if isSignedIn() && isOfBranch(existing().branchId);
+      allow list: if isSignedIn() && (isMaster() || isOfBranch(resource.data.branchId));
+      allow create: if isSignedIn() && isValidId(alignmentId) && isValidAlignment(incoming())
+                     && isOfBranch(incoming().branchId);
+      allow update: if isSignedIn() && isValidId(alignmentId) && isValidAlignment(incoming())
+                     && isOfBranch(existing().branchId)
+                     && isOfBranch(incoming().branchId);
+      allow delete: if isSignedIn() && isValidId(alignmentId) && isOfBranch(existing().branchId);
+    }
+
+    // CALIBRATIONS COLLECTION
+    match /calibrations/{calibrationId} {
+      allow get: if isSignedIn() && isOfBranch(existing().branchId);
+      allow list: if isSignedIn() && (isMaster() || isOfBranch(resource.data.branchId));
+      allow create: if isSignedIn() && isValidId(calibrationId) && isValidCalibration(incoming())
+                     && isOfBranch(incoming().branchId);
+      allow update: if isSignedIn() && isValidId(calibrationId) && isValidCalibration(incoming())
+                     && isOfBranch(existing().branchId)
+                     && isOfBranch(incoming().branchId);
+      allow delete: if isSignedIn() && isValidId(calibrationId) && isOfBranch(existing().branchId);
+    }
+
+    // BALANCINGS COLLECTION
+    match /balancings/{balancingId} {
+      allow get: if isSignedIn() && isOfBranch(existing().branchId);
+      allow list: if isSignedIn() && (isMaster() || isOfBranch(resource.data.branchId));
+      allow create: if isSignedIn() && isValidId(balancingId) && isValidBalancing(incoming())
+                     && isOfBranch(incoming().branchId);
+      allow update: if isSignedIn() && isValidId(balancingId) && isValidBalancing(incoming())
+                     && isOfBranch(existing().branchId)
+                     && isOfBranch(incoming().branchId);
+      allow delete: if isSignedIn() && isValidId(balancingId) && isOfBranch(existing().branchId);
+    }
+
+    // INVENTORY ITEMS COLLECTION
+    match /inventoryItems/{inventoryItemId} {
+      allow get: if isSignedIn() && isOfBranch(existing().branchId);
+      allow list: if isSignedIn() && (isMaster() || isOfBranch(resource.data.branchId));
+      allow create: if isSignedIn() && isValidId(inventoryItemId) && isValidInventoryItem(incoming())
+                     && isOfBranch(incoming().branchId);
+      allow update: if isSignedIn() && isValidId(inventoryItemId) && isValidInventoryItem(incoming())
+                     && isOfBranch(existing().branchId)
+                     && isOfBranch(incoming().branchId);
+      allow delete: if isSignedIn() && isValidId(inventoryItemId) && isOfBranch(existing().branchId);
+    }
+
+    // TREAD MEASUREMENTS COLLECTION
+    match /treadMeasurements/{treadMeasurementId} {
+      allow get: if isSignedIn() && isOfBranch(existing().branchId);
+      allow list: if isSignedIn() && (isMaster() || isOfBranch(resource.data.branchId));
+      allow create: if isSignedIn() && isValidId(treadMeasurementId) && isValidTreadMeasurement(incoming())
+                     && isOfBranch(incoming().branchId);
+      allow update: if isSignedIn() && isValidId(treadMeasurementId) && isValidTreadMeasurement(incoming())
+                     && isOfBranch(existing().branchId)
+                     && isOfBranch(incoming().branchId);
+      allow delete: if isSignedIn() && isValidId(treadMeasurementId) && isOfBranch(existing().branchId);
+    }
+
+    // TIRE MOVEMENTS COLLECTION
+    match /tireMovements/{tireMovementId} {
+      allow get: if isSignedIn() && isOfBranch(existing().branchId);
+      allow list: if isSignedIn() && (isMaster() || isOfBranch(resource.data.branchId));
+      allow create: if isSignedIn() && isValidId(tireMovementId) && isValidTireMovement(incoming())
+                     && isOfBranch(incoming().branchId);
+      allow update: if isSignedIn() && isValidId(tireMovementId) && isValidTireMovement(incoming())
+                     && isOfBranch(existing().branchId)
+                     && isOfBranch(incoming().branchId);
+      allow delete: if isSignedIn() && isValidId(tireMovementId) && isOfBranch(existing().branchId);
+    }
+
+  }
+}

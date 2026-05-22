@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #191c1e;
+  --color-brand-secondary: #9d4300;
+  --color-brand-orange: #fd761a;
+  --color-surface-bg: #f7f9fb;
+  --color-surface-card: #ffffff;
+  --color-border-custom: #e0e3e5;
+  --color-surface-container: #eceef0;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-surface-bg);
+    color: var(--color-brand-primary);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+}
+

@@ -1,0 +1,6 @@
+{
+  "name": "Borracharia Pro",
+  "description": "Gerenciador profissional para oficinas de borracharia, com controle de rodízio de pneus, alinhamento, calibragem e painel de indicadores operacionais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

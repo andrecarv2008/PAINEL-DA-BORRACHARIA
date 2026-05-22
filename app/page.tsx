@@ -1034,6 +1034,84 @@ export default function BorrachariaProApp() {
   };
 
   // Service submit handlers
+  const validateAndDecrementStock = async (tireName: string, serviceLabel: string): Promise<{ success: boolean; errorMsg?: string }> => {
+    if (!tireName || !tireName.trim() || tireName.toLowerCase() === "sem pneu" || tireName.toLowerCase() === "sucata") {
+      return { success: true };
+    }
+
+    const targetName = tireName.toLowerCase().trim();
+
+    // Find custom match
+    // 1. Exact or direct inclusion
+    let matchedItem = inventoryItems.find((i) => {
+      const name = i.nome.toLowerCase().trim();
+      return name === targetName || name.includes(targetName) || targetName.includes(name);
+    });
+
+    // 2. Word overlapping match if not matched yet
+    if (!matchedItem) {
+      const ignoreWords = ["pneu", "pneus", "de", "com", "sem", "marca", "unidades", "unidade"];
+      const searchWords = targetName.split(/[\s/\-R]+/).filter((w) => w.length > 2 && !ignoreWords.includes(w));
+      
+      if (searchWords.length > 0) {
+        matchedItem = inventoryItems.find((i) => {
+          const name = i.nome.toLowerCase().trim();
+          return searchWords.every((word) => name.includes(word));
+        });
+        
+        if (!matchedItem) {
+          matchedItem = inventoryItems.find((i) => {
+            const name = i.nome.toLowerCase().trim();
+            return searchWords.some((word) => {
+              const isBrandOrMeasure = /^[a-zA-Z]{4,}$/.test(word) || /\d+/.test(word);
+              return isBrandOrMeasure && name.includes(word);
+            });
+          });
+        }
+      }
+    }
+
+    if (!matchedItem) {
+      const availableTires = inventoryItems
+        .filter((i) => i.nome.toLowerCase().includes("pneu"))
+        .map((i) => `"${i.nome}" (Saldo: ${i.quantidade})`)
+        .join("\n- ");
+      
+      const listMsg = availableTires.length > 0
+        ? `\nPneus atualmente cadastrados no estoque:\n- ${availableTires}`
+        : "\nNão há pneus cadastrados no Estoque atualmente.";
+
+      return {
+        success: false,
+        errorMsg: `❌ O item "${tireName}" não foi encontrado no estoque para o serviço de ${serviceLabel}.${listMsg}\n\nPor favor, cadastre este pneu no Estoque com quantidade positiva ou clique em nossas sugestões do estoque!`,
+      };
+    }
+
+    if (matchedItem.quantidade < 1) {
+      return {
+        success: false,
+        errorMsg: `❌ O pneu "${matchedItem.nome}" está esgotado no estoque (Saldo: 0). Reabasteça o estoque antes de salvar o serviço de ${serviceLabel}!`,
+      };
+    }
+
+    // Decrement the quantity securely on Firestore
+    try {
+      const nextQuantity = matchedItem.quantidade - 1;
+      await updateDoc(doc(db, "inventoryItems", matchedItem.id), {
+        quantidade: nextQuantity,
+        alerta: nextQuantity <= matchedItem.meta * 0.2,
+        updatedAt: serverTimestamp(),
+      });
+      return { success: true };
+    } catch (err) {
+      console.error("Erro ao decrementar estoque de pneu:", err);
+      return {
+        success: false,
+        errorMsg: "❌ Ocorreu um erro ao atualizar a quantidade do pneu no estoque. Tente novamente.",
+      };
+    }
+  };
+
   const handleAddRotation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rotationForm.placa) return alert("Por favor, preencha a placa!");
@@ -1042,6 +1120,14 @@ export default function BorrachariaProApp() {
     const validation = validateAndFormatPlate(rotationForm.placa, "rodizio", serviceDate);
     if (!validation.isValid) {
       return alert(validation.errorMsg);
+    }
+
+    if (!currentUser) return alert("Por favor, faça login para registrar serviços.");
+
+    // Validate if required tire exists in stock and automatically decrement it if available
+    const stockCheck = await validateAndDecrementStock(rotationForm.pneuInstalado, "rodízio");
+    if (!stockCheck.success) {
+      return alert(stockCheck.errorMsg);
     }
 
     const newRot: Rotation = {
@@ -1053,8 +1139,6 @@ export default function BorrachariaProApp() {
       data: serviceDate,
       status: "CONCLUÍDO",
     };
-
-    if (!currentUser) return alert("Por favor, faça login para registrar serviços.");
 
     try {
       await setDoc(doc(db, "rotations", newRot.id), {
@@ -1218,6 +1302,14 @@ export default function BorrachariaProApp() {
 
     if (!currentUser || !userProfile) {
       return alert("Realize login para poder registrar movimentações de pneus.");
+    }
+
+    // Validate if required tire exists in stock and automatically decrement it if available
+    if (!editingMovementId) {
+      const stockCheck = await validateAndDecrementStock(movementForm.pneuAtual, "movimentação");
+      if (!stockCheck.success) {
+        return alert(stockCheck.errorMsg);
+      }
     }
 
     const { branchId, branchName, role, email } = userProfile;
@@ -1519,12 +1611,11 @@ export default function BorrachariaProApp() {
 
   // Signout handler for standard active session
   const handleSignOut = async () => {
-    if (confirm("Deseja realmente sair da conta?")) {
-      try {
-        await signOut(auth);
-      } catch (err: any) {
-        alert("Erro ao encerrar sessão: " + err.message);
-      }
+    try {
+      await signOut(auth);
+      addToast("Sessão encerrada com sucesso!", "info");
+    } catch (err: any) {
+      addToast("Erro ao encerrar sessão: " + (err.message || "Tente novamente"), "error");
     }
   };
 
@@ -3514,6 +3605,24 @@ export default function BorrachariaProApp() {
                           placeholder="Ex: Michelin LTX Force 215/65"
                           className="w-full bg-white border border-gray-300 rounded px-3 py-2 text-sm text-brand-primary focus:ring-1 focus:ring-brand-secondary focus:outline-none"
                         />
+                        {inventoryItems.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1 items-center">
+                            <span className="text-[10px] text-gray-500 font-bold uppercase mr-1">T pneus em estoque:</span>
+                            {inventoryItems
+                              .filter((i) => i.nome.toLowerCase().includes("pneu") && i.quantidade > 0)
+                              .map((i) => (
+                                <button
+                                  key={i.id}
+                                  type="button"
+                                  onClick={() => setRotationForm({ ...rotationForm, pneuInstalado: i.nome })}
+                                  className="text-[10px] bg-brand-primary/15 text-brand-primary hover:bg-brand-primary/25 rounded px-2 py-0.5 font-semibold transition cursor-pointer"
+                                >
+                                  {i.nome} ({i.quantidade})
+                                </button>
+                              ))
+                            }
+                          </div>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                         <div>
@@ -4357,6 +4466,24 @@ export default function BorrachariaProApp() {
                               placeholder="Michelin 295/80 R22.5..."
                               className="w-full bg-gray-50 border border-gray-300 rounded px-3 py-2 text-sm text-brand-primary focus:ring-1 focus:ring-brand-secondary"
                             />
+                            {inventoryItems.length > 0 && (
+                              <div className="mt-1.5 flex flex-wrap gap-1 items-center">
+                                <span className="text-[10px] text-gray-500 font-bold uppercase mr-1">T pneus em estoque:</span>
+                                {inventoryItems
+                                  .filter((i) => i.nome.toLowerCase().includes("pneu") && i.quantidade > 0)
+                                  .map((i) => (
+                                    <button
+                                      key={i.id}
+                                      type="button"
+                                      onClick={() => setMovementForm({ ...movementForm, pneuAtual: i.nome })}
+                                      className="text-[10px] bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/25 rounded px-2 py-0.5 font-semibold transition cursor-pointer"
+                                    >
+                                      {i.nome} ({i.quantidade})
+                                    </button>
+                                  ))
+                                }
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -5007,6 +5134,23 @@ export default function BorrachariaProApp() {
                       onChange={(e) => setRotationForm({ ...rotationForm, pneuInstalado: e.target.value })}
                       className="w-full bg-gray-50 border rounded px-3 py-1.5 text-brand-primary"
                     />
+                    {inventoryItems.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1 items-center">
+                        {inventoryItems
+                          .filter((i) => i.nome.toLowerCase().includes("pneu") && i.quantidade > 0)
+                          .map((i) => (
+                            <button
+                              key={i.id}
+                              type="button"
+                              onClick={() => setRotationForm({ ...rotationForm, pneuInstalado: i.nome })}
+                              className="text-[10px] bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/25 rounded px-1.5 py-0.5 transition cursor-pointer"
+                            >
+                              {i.nome} ({i.quantidade})
+                            </button>
+                          ))
+                        }
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

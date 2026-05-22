@@ -135,6 +135,11 @@ service cloud.firestore {
 
     // --- COLLECTION INVARIANTS ---
 
+    // TEST CONNECTION PATH FOR BOOT VALIDATION
+    match /test/{docId} {
+      allow read: if true;
+    }
+
     // USERS COLLECTION
     match /users/{userId} {
       allow get: if isSignedIn();

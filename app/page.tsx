@@ -63,6 +63,8 @@ import {
   googleProvider,
   handleFirestoreError,
   OperationType,
+  firebaseConfig,
+  testConnection,
 } from "../lib/firebase";
 
 // Types
@@ -376,6 +378,9 @@ export default function BorrachariaProApp() {
   const itemsPerPage = 4;  // Initialize with original Mock Data from Screenshots
   // Listen to Auth State
   useEffect(() => {
+    // Validate Firestore connection on boot
+    testConnection();
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setAuthLoading(false);
@@ -1867,7 +1872,7 @@ export default function BorrachariaProApp() {
       console.error(err);
       let localizedMsg = "Falha de autenticação. Verifique suas credenciais.";
       if (err.code === "auth/operation-not-allowed") {
-        localizedMsg = "O login por E-mail e Senha não está ativado no seu projeto Firebase. Por favor, acesse o Console do Firebase (https://console.firebase.google.com/project/vernal-helix-48gvj/authentication/providers), ative o provedor 'E-mail/senha' e salve as alterações.";
+        localizedMsg = `O login por E-mail e Senha não está ativado no seu projeto Firebase. Por favor, acesse o Console do Firebase (https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/providers), ative o provedor 'E-mail/senha' e salve as alterações.`;
       } else if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
         localizedMsg = "E-mail ou Senha incorretos. Por favor, verifique.";
       } else if (err.code === "auth/weak-password") {
@@ -1901,7 +1906,7 @@ export default function BorrachariaProApp() {
       console.error(err);
       let localizedMsg = "Erro ao enviar e-mail de recuperação: " + (err.message || "Tente novamente");
       if (err.code === "auth/operation-not-allowed") {
-        localizedMsg = "O login por E-mail e Senha não está ativado no seu projeto Firebase. Por favor, acesse o Console do Firebase (https://console.firebase.google.com/project/vernal-helix-48gvj/authentication/providers), ative o provedor 'E-mail/senha' e salve as alterações.";
+        localizedMsg = `O login por E-mail e Senha não está ativado no seu projeto Firebase. Por favor, acesse o Console do Firebase (https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/providers), ative o provedor 'E-mail/senha' e salve as alterações.`;
       }
       setAuthStatusMsg({
         text: localizedMsg,
@@ -1922,7 +1927,9 @@ export default function BorrachariaProApp() {
       if (err.code !== "auth/popup-closed-by-user") {
         let localizedMsg = "Falha de acesso via Google: " + (err.message || "Tente novamente");
         if (err.code === "auth/operation-not-allowed") {
-          localizedMsg = "O login com Google não está ativado no seu projeto Firebase. Por favor, acesse o Console do Firebase (https://console.firebase.google.com/project/vernal-helix-48gvj/authentication/providers), ative o provedor 'Google' e salve as alterações.";
+          localizedMsg = `O login com Google não está ativado no seu projeto Firebase. Por favor, acesse o Console do Firebase (https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/providers), ative o provedor 'Google' e salve as alterações.`;
+        } else if (err.code === "auth/unauthorized-domain") {
+          localizedMsg = `O domínio atual não está autorizado na lista do Firebase Authentication. Por favor, acesse o Console do Firebase (https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/settings -> Domínios autorizados) e adicione o domínio ATUAL ou da Vercel ('painel-da-borracharia.vercel.app') para habilitar o login.`;
         }
         setAuthStatusMsg({
           text: localizedMsg,

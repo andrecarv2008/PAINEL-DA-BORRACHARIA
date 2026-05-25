@@ -426,6 +426,8 @@ export default function BorrachariaProApp() {
         });
         setUserProfile(defaultProf);
       }
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, `users/${currentUser.uid}`);
     });
 
     return () => unsubProfile();

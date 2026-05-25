@@ -221,7 +221,8 @@ export default function BorrachariaProApp() {
 
   // Corporate login selectors
   const [loginBranchId, setLoginBranchId] = useState("MATRIZ");
-  const [registerCargo, setRegisterCargo] = useState("");
+  const [registerBranchId, setRegisterBranchId] = useState("MATRIZ");
+  const [registerCargo, setRegisterCargo] = useState("Operador Técnico");
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<
@@ -443,7 +444,20 @@ export default function BorrachariaProApp() {
         return;
       }
 
-      const savedLoginBranch = sessionStorage.getItem("loginBranchId") || userProfile.branchId;
+      let savedLoginBranch = sessionStorage.getItem("loginBranchId");
+      
+      if (userProfile.role !== "MASTER") {
+        // Automatically sync and restrict operators/managers to their assigned branch
+        savedLoginBranch = userProfile.branchId;
+        sessionStorage.setItem("loginBranchId", userProfile.branchId);
+        setLoginBranchId(userProfile.branchId);
+      } else if (!savedLoginBranch) {
+        // For admin/master, default to MATRIZ if nothing is selected yet
+        savedLoginBranch = "MATRIZ";
+        sessionStorage.setItem("loginBranchId", "MATRIZ");
+        setLoginBranchId("MATRIZ");
+      }
+
       if (userProfile.role !== "MASTER" && userProfile.branchId !== savedLoginBranch) {
         alert(`Acesso Negado: Seu perfil pertence à filial ${userProfile.branchName} e não à filial de login (${savedLoginBranch}).`);
         await signOut(auth);
@@ -1948,6 +1962,7 @@ export default function BorrachariaProApp() {
 
     try {
       if (authMode === "login") {
+        sessionStorage.setItem("loginBranchId", loginBranchId);
         await signInWithEmailAndPassword(auth, authEmail, authPassword);
         addToast("Sessão iniciada com sucesso!", "success");
       } else if (authMode === "register") {
@@ -1956,6 +1971,9 @@ export default function BorrachariaProApp() {
           setIsAuthSubmitting(false);
           return;
         }
+        sessionStorage.setItem("registerBranchId", registerBranchId);
+        sessionStorage.setItem("registerCargo", registerCargo);
+        sessionStorage.setItem("loginBranchId", registerBranchId);
         await createUserWithEmailAndPassword(auth, authEmail, authPassword);
         addToast("Sua conta foi criada e autenticada com sucesso!", "success");
       }
@@ -2011,6 +2029,13 @@ export default function BorrachariaProApp() {
   const handleGoogleSignIn = async () => {
     setAuthStatusMsg(null);
     try {
+      if (authMode === "register") {
+        sessionStorage.setItem("registerBranchId", registerBranchId);
+        sessionStorage.setItem("registerCargo", registerCargo);
+        sessionStorage.setItem("loginBranchId", registerBranchId);
+      } else {
+        sessionStorage.setItem("loginBranchId", loginBranchId);
+      }
       await signInWithPopup(auth, googleProvider);
       addToast("Acesso via Google autenticado com sucesso!", "success");
     } catch (err: any) {
@@ -2109,6 +2134,73 @@ export default function BorrachariaProApp() {
                     className="appearance-none relative block w-full px-4 py-3 border border-neutral-800 rounded-xl bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
                   />
                 </div>
+              )}
+
+              {authMode === "login" && (
+                <div>
+                  <label htmlFor="loginBranch" className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                    Filial de Trabalho (Acesso)
+                  </label>
+                  <select
+                    id="loginBranch"
+                    value={loginBranchId}
+                    onChange={(e) => {
+                      setLoginBranchId(e.target.value);
+                      sessionStorage.setItem("loginBranchId", e.target.value);
+                    }}
+                    className="appearance-none relative block w-full px-4 py-3 border border-neutral-800 rounded-xl bg-neutral-950 text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm cursor-pointer"
+                  >
+                    {FILIAIS.map((f) => (
+                      <option key={f.id} value={f.id} className="bg-neutral-900 text-white">
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {authMode === "register" && (
+                <>
+                  <div>
+                    <label htmlFor="registerBranch" className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                      Filial de Trabalho
+                    </label>
+                    <select
+                      id="registerBranch"
+                      value={registerBranchId}
+                      onChange={(e) => {
+                        setRegisterBranchId(e.target.value);
+                        sessionStorage.setItem("registerBranchId", e.target.value);
+                      }}
+                      className="appearance-none relative block w-full px-4 py-3 border border-neutral-800 rounded-xl bg-neutral-950 text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm cursor-pointer"
+                    >
+                      {FILIAIS.map((f) => (
+                        <option key={f.id} value={f.id} className="bg-neutral-900 text-white">
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="registerCargoSec" className="block text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                      Cargo / Função de Trabalho
+                    </label>
+                    <select
+                      id="registerCargoSec"
+                      value={registerCargo}
+                      onChange={(e) => {
+                        setRegisterCargo(e.target.value);
+                        sessionStorage.setItem("registerCargo", e.target.value);
+                      }}
+                      className="appearance-none relative block w-full px-4 py-3 border border-neutral-800 rounded-xl bg-neutral-950 text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm cursor-pointer"
+                    >
+                      <option value="Operador Técnico" className="bg-neutral-900 text-white">Operador Técnico</option>
+                      <option value="Gerente de Pátio" className="bg-neutral-900 text-white">Gerente de Pátio</option>
+                      <option value="Supervisor" className="bg-neutral-900 text-white">Supervisor</option>
+                    </select>
+                  </div>
+                </>
               )}
             </div>
 
